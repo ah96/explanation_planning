@@ -26,10 +26,12 @@ class ScenarioResponseModel:
             "continue_without_comment",
         ]
 
-        # Initial probabilities based on the paper
-        self.probability_table = self._initialize_probabilities()
+        # Initial scenario-response probabilities based on the paper
+        self.response_probability_table = self._initialize_response_probabilities()
+        # Initial scenario probabilities based on the paper
+        self.scenario_probability_table = self._initialize_scenario_probabilities()
 
-    def _initialize_probabilities(self):
+    def _initialize_response_probabilities(self):
         """
         Create the initial probability table for scenario-response relationships.
         """
@@ -84,7 +86,7 @@ class ScenarioResponseModel:
 
         table["social_norm_violation"] = {
             "apology": 0.23,
-            "why_explanation": 0.26,
+            "why_exfailure_probsplanation": 0.26,
             "what_explanation": 0.18,
             "narrate_next_action": 0.16,
             "ask_for_help": 0.07,
@@ -101,58 +103,93 @@ class ScenarioResponseModel:
         }
 
         return table
-
+    
+    def _initialize_scenario_probabilities(self):
+        """
+        Initialize probabilities for failures in each scenario.
+        """
+        return {
+            "agent_error": 0.2,
+            "suboptimal_behavior": 0.15,
+            "agent_inability": 0.1,
+            "unforeseen_circumstances": 0.25,
+            "uncertainty": 0.2,
+            "social_norm_violation": 0.05,
+            "normal_interaction": 0.05,
+        }
+    
     def randomize_probabilities(self):
         """
-        Randomize the probability values for each scenario-response pair.
-        Ensure probabilities for each scenario sum to 1.
+        Randomize the probability values for response preferences and scenarios.
         """
+        # Randomize scenario and response probabilities
+        total_sc = 0.0
+        scenario_probs = {}
+
         for scenario in self.scenarios:
+            prob = random.random()
+            scenario_probs[scenario] = prob
+            total_sc += prob
+
             total = 0.0
             random_probs = {}
 
-            # Generate random probabilities for each response
             for response in self.responses:
                 prob = random.random()
                 random_probs[response] = prob
                 total += prob
 
-            # Normalize probabilities
             for response in self.responses:
                 random_probs[response] /= total
 
-            self.probability_table[scenario] = random_probs
+            self.response_probability_table[scenario] = random_probs
 
-    def get_probabilities(self):
-        """
-        Retrieve the current probability table.
-        """
-        return self.probability_table
+        for scenario in self.scenarios:
+            scenario_probs[scenario] /= total_sc
 
-    def get_response_distribution(self, scenario):
-        """
-        Get the probability distribution for a specific scenario.
-        :param scenario: The scenario for which the distribution is required.
-        :return: Dictionary of responses with their probabilities.
-        """
-        if scenario not in self.probability_table:
-            raise ValueError(f"Unknown scenario: {scenario}")
-        return self.probability_table[scenario]
+        self.scenario_probability_table = scenario_probs
 
-    def display_probabilities_as_table(self):
+    def get_response_probabilities(self):
         """
-        Display the probability table as a pandas DataFrame for better readability.
+        Retrieve the current response probabilities
         """
-        df = pd.DataFrame.from_dict(self.probability_table, orient="index", columns=self.responses)
+        return self.response_probability_table
+
+    def get_scenario_probabilities(self):
+        """
+        Retrieve the current scenario probabilities.
+        """
+        return self.scenario_probability_table
+
+    def display_response_probabilities(self):
+        """
+        Display the response probability table
+        """
+        df = pd.DataFrame.from_dict(self.response_probability_table, orient="index", columns=self.responses)
+        print(df)
+
+    def display_scenario_probabilities(self):
+        """
+        Display the scenario probabilitie table
+        """
+        df = pd.DataFrame.from_dict(self.scenario_probability_table.items())
         print(df)
 
 # Example Usage
 if __name__ == "__main__":
     model = ScenarioResponseModel()
 
-    print("Initial Probability Table:")
-    model.display_probabilities_as_table()
+    print("\nInitial Scenario Probability Table:")
+    model.display_scenario_probabilities()
 
-    print("\nRandomized Probability Table:")
+    print("\nInitial Response Probability Table:")
+    model.display_response_probabilities()
+
+    # Randomization
     model.randomize_probabilities()
-    model.display_probabilities_as_table()
+    
+    print("\nRandomized Scenario Probability Table:")
+    model.display_scenario_probabilities()
+
+    print("\nRandomized Response Probability Table:")
+    model.display_response_probabilities()
