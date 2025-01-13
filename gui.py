@@ -82,7 +82,7 @@ class PlanningGUI:
         def start_server():
             try:
                 print("Starting the server...")
-                server_command = ["./run-server.py", "-b", "benchmarks/gerard/"]
+                server_command = ["./run-server.py", "-b", "./testbed/benchmarks/explanation_planning/"]
                 self.server_process = subprocess.Popen(server_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
                 return self.server_process
             except Exception as e:
@@ -93,6 +93,9 @@ class PlanningGUI:
             try:
                 # Run PROST
                 print('Running PROST!!')
+                self.display(['Running PROST!!'])
+                self.root.update_idletasks()  # Force the GUI to update immediately
+
                 planner_settings="[Prost -s 1 -se [IPC2014]]"
                 problem_instance_name = "instance_prehoc"
                 prost_command = ["./prost.py", problem_instance_name, planner_settings]
@@ -113,6 +116,10 @@ class PlanningGUI:
                 print(plan_final)
 
                 self.current_plan = plan_final[1:]
+                self.display(['Plan received!'])
+                self.root.update_idletasks()  # Force the GUI to update immediately
+                time.sleep(2)
+                
                 self.display(plan_final)
                 self.root.update_idletasks()  # Force the GUI to update immediately
 
@@ -149,9 +156,74 @@ class PlanningGUI:
         
     def run_reactive(self):
         """Generate a reactive plan."""
-        self.current_plan = ["Action A", "Action B", "Action C"]  # Placeholder
-        self.display(self.current_plan)
+        def run_prost(problem_instance_name):
+            try:
+                # Run PROST
+                print('Running PROST!!')
+                self.display(['Running PROST!!'])
+                self.root.update_idletasks()  # Force the GUI to update immediately
+
+                planner_settings="[Prost -s 1 -se [IPC2014]]"
+                #problem_instance_name = "instance_reactive"
+                prost_command = ["./prost.py", problem_instance_name, planner_settings]
+                result = subprocess.run(prost_command, capture_output=True, text=True, check=True)
+
+                # Extract actions from the output
+                action_pattern = re.compile(r"[a-zA-Z_]+\([^()0-9]*\)") #re.compile(r"\([^\d()]*\)")  # Match actions in parentheses
+                actions = action_pattern.findall(result.stdout)
+
+                plan_length = int(len(actions) / 2)
+                #print(plan_length)
+                plan = actions[len(actions)-plan_length:len(actions)]
+                #print(plan)
+                plan_final = ['Plan:']
+                for a in plan:
+                    if a != 'noop()':
+                        plan_final.append(a)
+                print(plan_final)
+
+                self.current_plan = plan_final[1:]
+                self.display(['Plan received!'])
+                self.root.update_idletasks()  # Force the GUI to update immediately
+                time.sleep(2)
+
+            except subprocess.CalledProcessError as e:
+                print("An error occurred while running PROST:")
+                print(e.stderr)
+                return []
+
+        run_prost("instance_posthoc")
+        l = ["Executing Plan:"]   
+        for a in self.current_plan:
+            if 'failure' in a:
+                
+                l.append(a)
+                self.display(l)
+                self.root.update_idletasks()  # Force the GUI to update immediately
+                time.sleep(1)
+                
+                l.append('Failure happened!')
+                self.display(l)
+                self.root.update_idletasks()  # Force the GUI to update immediately
+                time.sleep(2)
+                
+                break
+            l.append(a)
+            self.display(l)
+            self.root.update_idletasks()  # Force the GUI to update immediately
+            time.sleep(2)
+
+        self.display(['Replanning...'])
         self.root.update_idletasks()  # Force the GUI to update immediately
+        time.sleep(2)
+        run_prost("instance_reactive")
+        l = ["New plan (from the failure point):"]
+        for a in self.current_plan:
+            l.append(a)
+            self.display(l)
+            self.root.update_idletasks()  # Force the GUI to update immediately
+            time.sleep(2)
+
 
     def run_post_hoc(self):
         """Generate a pre-hoc plan."""
@@ -163,12 +235,12 @@ class PlanningGUI:
         :param planner_settings: Settings for the planner.
         :return: A list of actions forming the plan.
         """
-        text = ['Running PROST!!']
-        self.display(text)
-        self.root.update_idletasks()  # Force the GUI to update immediately
         try:
             # Run PROST
             print('Running PROST!!')
+            self.display(['Running PROST!!'])
+            self.root.update_idletasks()  # Force the GUI to update immediately
+
             planner_settings="[Prost -s 1 -se [IPC2014]]"
             problem_instance_name = "instance_posthoc"
             prost_command = ["./prost.py", problem_instance_name, planner_settings]
@@ -182,7 +254,7 @@ class PlanningGUI:
             #print(plan_length)
             plan = actions[len(actions)-plan_length:len(actions)]
             #print(plan)
-            plan_final = ['Plan without explanation:']
+            plan_final = ['Plan found:']
             for a in plan:
                 if a != 'noop()':
                     plan_final.append(a)
@@ -193,14 +265,18 @@ class PlanningGUI:
             self.root.update_idletasks()  # Force the GUI to update immediately
             
             time.sleep(5)  # Pause the program for N seconds
+            self.display(['Analyzing the plan...'])
+            self.root.update_idletasks()  # Force the GUI to update immediately
+            time.sleep(3)  # Pause the program for N seconds
             
             # Add response action to the original plan
-            problem_file = "./testbed/benchmarks/gerard_mix/problem_posthoc.rddl"
+            problem_file = "./testbed/benchmarks/explanation_planning/problem_posthoc.rddl"
             self.current_plan = self.get_response(self.current_plan, problem_file)
             self.current_plan.insert(0, 'Plan with explanation:')
             print(self.current_plan)
             self.display(self.current_plan)
             self.root.update_idletasks()  # Force the GUI to update immediately
+            self.current_plan = self.current_plan[1:]
 
         except subprocess.CalledProcessError as e:
             print("An error occurred while running PROST:")
@@ -321,6 +397,11 @@ class PlanningGUI:
         # Identify the failure type from a plan
         failure = self.extract_failure_from_plan(plan)
 
+        if failure != '':
+            self.display(['Found a failure in the plan: ' + failure])
+            self.root.update_idletasks()  # Force the GUI to update immediately
+            time.sleep(5)
+
         # Parse the problem file
         failure_probabilities, response_probabilities = self.parse_problem_file(problem_file_path)
 
@@ -333,8 +414,13 @@ class PlanningGUI:
 
         if not response:
             print("No valid response found for failure:", failure)
+            self.display(["No valid response found for failure:" + failure])
+            self.root.update_idletasks()  # Force the GUI to update immediately
             return plan
 
+        self.display(["Found a response for the failure " + failure + ". It is " + response])
+        self.root.update_idletasks()  # Force the GUI to update immediately
+        time.sleep(5)
         # Step 3: Extract robot and visitor names from the `fetch_book` action. 
         # Add the response action to the plan after the relevant `goto_waypoint` action
         robot_name, visitor_name = None, None
@@ -347,6 +433,10 @@ class PlanningGUI:
                 break
         response_action = f"give_response({robot_name}, {response}, {failure}, {visitor_name})"
         updated_plan = []
+
+        self.display(['Embedding the response in the original plan...'])
+        self.root.update_idletasks()  # Force the GUI to update immediately
+        time.sleep(5)  # Pause the program for N seconds
 
         # Regex to parse `goto_waypoint` actions and extract destination
         goto_pattern = re.compile(r"goto_waypoint\(\s*\w+,\s*\w+,\s*(\w+)\s*\)")

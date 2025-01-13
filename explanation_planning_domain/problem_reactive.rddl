@@ -1,4 +1,4 @@
-non-fluents nf_explanation_planning {
+non-fluents nf_explanation_planning_reactive {
 	domain = explanation_planning;
     objects {
         robot: {tiago};
@@ -73,16 +73,18 @@ non-fluents nf_explanation_planning {
 	};
 }
 
-instance explanation_planning_instance {
-	  domain = explanation_planning;
-	  non-fluents = nf_explanation_planning;
+instance instance_reactive {
+    domain = explanation_planning;
+    non-fluents = nf_explanation_planning_reactive;
 	
     init-state {
-        robot_at(tiago, start_position);
+        robot_at(tiago, bookshelf);
+        book_fetched(book, tiago, visitor);
+        failure_triggered(agent_error);
+        failure_happened = true;
 	  };
 
     max-nondef-actions = 1;
     horizon  = 15;
     discount = 1.0;
 }
-

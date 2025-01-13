@@ -6,7 +6,7 @@ def start_server_with_output():
     """
     Starts the server and captures its output in real-time.
     """
-    server_command = ["./run-server.py", "-b", "benchmarks/explanation_planning/"]
+    server_command = ["./run-server.py", "-b", "./testbed/benchmarks/explanation_planning/"]
 
     def read_output(process):
         """
