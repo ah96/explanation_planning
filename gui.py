@@ -98,7 +98,7 @@ class PlanningGUI:
 
                 planner_settings="[Prost -s 1 -se [IPC2014]]"
                 problem_instance_name = "instance_prehoc"
-                prost_command = ["./prost.py", problem_instance_name, planner_settings]
+                prost_command = ["/home/robolab/git/planning_ws/prost/prost.py", problem_instance_name, planner_settings]
                 result = subprocess.run(prost_command, capture_output=True, text=True, check=True)
 
                 # Extract actions from the output
@@ -165,7 +165,7 @@ class PlanningGUI:
 
                 planner_settings="[Prost -s 1 -se [IPC2014]]"
                 #problem_instance_name = "instance_reactive"
-                prost_command = ["./prost.py", problem_instance_name, planner_settings]
+                prost_command = ["/home/robolab/git/planning_ws/prost/prost.py", problem_instance_name, planner_settings]
                 result = subprocess.run(prost_command, capture_output=True, text=True, check=True)
 
                 # Extract actions from the output
@@ -243,7 +243,7 @@ class PlanningGUI:
 
             planner_settings="[Prost -s 1 -se [IPC2014]]"
             problem_instance_name = "instance_posthoc"
-            prost_command = ["./prost.py", problem_instance_name, planner_settings]
+            prost_command = ["/home/robolab/git/planning_ws/prost/prost.py", problem_instance_name, planner_settings]
             result = subprocess.run(prost_command, capture_output=True, text=True, check=True)
 
             # Extract actions from the output
