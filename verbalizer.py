@@ -3,18 +3,24 @@
 import logging
 import random
 
-# If using OpenAI API:
-# import openai
-# openai.api_key = 'your-api-key'
+# Optional: connect to OpenAI API
+import openai
+#openai.api_key = 'your-api-key'
 
-# Use a real LLM when integrating with OpenAI or local model
+# Toggle between mock and real LLM usage
 USE_MOCK = True
 
 class ExplanationVerbalizer:
+    """
+    Generates natural language explanations based on planning strategy
+    and failure-response context using either a mock system or an LLM.
+    """
+
     def __init__(self):
         logging.info("ExplanationVerbalizer initialized")
 
     def verbalize(self, ctx):
+        """Creates an explanation prompt and returns a verbalized explanation."""
         prompt = self.build_prompt(ctx)
         logging.info(f"Generated prompt:\n{prompt}")
 
@@ -24,6 +30,9 @@ class ExplanationVerbalizer:
             return self.call_llm(prompt)
 
     def build_prompt(self, ctx):
+        """
+        Create a prompt string for the LLM based on the strategy and context.
+        """
         strategy = ctx.get("strategy", "unknown")
         failure = ctx.get("failure", None)
         response = ctx.get("response", None)
@@ -48,16 +57,22 @@ class ExplanationVerbalizer:
             return base + "Explain your behavior clearly in context."
 
     def call_llm(self, prompt):
-        # Replace with real LLM call if needed
-        # response = openai.ChatCompletion.create(
-        #     model="gpt-4",
-        #     messages=[{"role": "user", "content": prompt}],
-        #     temperature=0.7,
-        # )
-        # return response.choices[0].message.content.strip()
+        """
+        Call the actual LLM (e.g., OpenAI) using the prompt (requires API key).
+        """
+        # Uncomment below if using OpenAI
+        response = openai.ChatCompletion.create(
+            model="gpt-4",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.7,
+        )
+        #return response.choices[0].message.content.strip()
         return "[LLM response would go here]"
 
     def mock_response(self, ctx):
+        """
+        Generate a fake response for testing without LLM calls.
+        """
         strategy = ctx.get("strategy")
         failure = ctx.get("failure", "a problem")
         response = ctx.get("response", "a solution")
@@ -75,7 +90,7 @@ class ExplanationVerbalizer:
         return mock_templates.get(strategy, "I'm explaining my decision in the best way I can.")
 
 
-# Example use:
+# Example usage for testing the verbalizer
 if __name__ == "__main__":
     explainer = ExplanationVerbalizer()
 
@@ -83,7 +98,13 @@ if __name__ == "__main__":
         "strategy": "post-hoc",
         "failure": "unavailable",
         "response": "suggest_alternative",
-        "plan": ["goto(robot1, room1, library)", "fetch_book(robot1, bookA, visitor1)", "failure_happens(robot1, bookA, unavailable)", "goto(robot1, library, visitor_area)", "give_response(robot1, suggest_alternative, unavailable, visitor1)"]
+        "plan": [
+            "goto(robot1, room1, library)",
+            "fetch_book(robot1, bookA, visitor1)",
+            "failure_happens(robot1, bookA, unavailable)",
+            "goto(robot1, library, visitor_area)",
+            "give_response(robot1, suggest_alternative, unavailable, visitor1)"
+        ]
     }
 
     print("\nGenerated Explanation:")
