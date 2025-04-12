@@ -20,7 +20,7 @@ class PlannerInterface:
         """Run the planner on a specific RDDL instance and return extracted actions."""
         try:
             planner_settings = "[Prost -s 1 -se [IPC2014]]"
-            prost_command = ["/home/robolab/planning_ws/prost/prost.py", instance_name, planner_settings]
+            prost_command = ["/home/robolab/planning_ws/planners/prost/prost.py", instance_name, planner_settings]
             result = subprocess.run(prost_command, capture_output=True, text=True, check=True)
             actions = re.findall(r"[a-zA-Z_]+\([^()0-9]*\)", result.stdout)
             plan = [a for a in actions[-len(actions)//2:] if a != 'noop()']

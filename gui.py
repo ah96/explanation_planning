@@ -82,7 +82,7 @@ class PlanningGUI:
         def start_server():
             try:
                 print("Starting the server...")
-                server_command = ["./run-server.py", "-b", "./testbed/benchmarks/explanation_planning/"]
+                server_command = ["./run-server.py", "-b", "./testbed/benchmarks/explanation_planning_2/"]
                 self.server_process = subprocess.Popen(server_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
                 return self.server_process
             except Exception as e:
@@ -97,8 +97,8 @@ class PlanningGUI:
                 self.root.update_idletasks()  # Force the GUI to update immediately
 
                 planner_settings="[Prost -s 1 -se [IPC2014]]"
-                problem_instance_name = "instance_prehoc"
-                prost_command = ["/home/robolab/git/planning_ws/prost/prost.py", problem_instance_name, planner_settings]
+                problem_instance_name = "instance_failures_responses"
+                prost_command = ["/home/robolab/planning_ws/planners/prost/prost.py", problem_instance_name, planner_settings]
                 result = subprocess.run(prost_command, capture_output=True, text=True, check=True)
 
                 # Extract actions from the output
@@ -165,7 +165,7 @@ class PlanningGUI:
 
                 planner_settings="[Prost -s 1 -se [IPC2014]]"
                 #problem_instance_name = "instance_reactive"
-                prost_command = ["/home/robolab/git/planning_ws/prost/prost.py", problem_instance_name, planner_settings]
+                prost_command = ["/home/robolab/planning_ws/planners/prost/prost.py", problem_instance_name, planner_settings]
                 result = subprocess.run(prost_command, capture_output=True, text=True, check=True)
 
                 # Extract actions from the output
@@ -243,7 +243,7 @@ class PlanningGUI:
 
             planner_settings="[Prost -s 1 -se [IPC2014]]"
             problem_instance_name = "instance_posthoc"
-            prost_command = ["/home/robolab/git/planning_ws/prost/prost.py", problem_instance_name, planner_settings]
+            prost_command = ["/home/robolab/planning_ws/planners/prost/prost.py", problem_instance_name, planner_settings]
             result = subprocess.run(prost_command, capture_output=True, text=True, check=True)
 
             # Extract actions from the output
