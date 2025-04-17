@@ -1,67 +1,67 @@
 domain explanation_planning {
-
     types {
-        failure: object;
-        response: object;
         robot: object;
         human: object;
-        waypoint: object;
         book: object;
+        waypoint: object;
+        response: object;
+        failure: object;
     };
 
     pvariables {
         // non-fluents
         human_at(human, waypoint): { non-fluent, bool, default = false };
         wants_book(human, book): { non-fluent, bool, default = false };
-        book_at(book, waypoint): { non-fluent, bool, default = false }; 
-        prob_failure(failure): { non-fluent, real, default = 0.5 };
-        prob_response(response, failure): { non-fluent, real, default = 0.5 };
+        book_at(book, waypoint): { non-fluent, bool, default = false };
+        prob_failure(book, failure): { non-fluent, real, default = 0.5 }; // failure probability now tied to the book
+        prob_response(failure, response): { non-fluent, real, default = 0.5 }; // response probability now tied to the failure
 
-        // state fluents (states)
+        // state fluents
         robot_at(robot, waypoint): { state-fluent, bool, default = false };
         book_fetched(book, robot, human): { state-fluent, bool, default = false };
-        failure_triggered(failure): { state-fluent, bool, default = false };
-        response_triggered(response): { state-fluent, bool, default = false };
-        failure_happened: { state-fluent, bool, default = false };
-        response_given: { state-fluent, bool, default = false };
+        response_given(response, failure): { state-fluent, bool, default = false };
         task_completed: { state-fluent, bool, default = false };
+        book_given(book, robot, human): { state-fluent, bool, default = false };
+        task_failed: { state-fluent, bool, default = false };
 
-        // action fluents (actions)
+        failure_occurred(book, robot, human, failure): { state-fluent, bool, default = false };
+        response_triggered(response, failure): { state-fluent, bool, default = false };
+
+        // action fluents
         goto_waypoint(robot, waypoint, waypoint): { action-fluent, bool, default = false };
         fetch_book(robot, book, human): { action-fluent, bool, default = false };
-        failure_happens(robot, book, failure): { action-fluent, bool, default = false };
-        give_response(robot, response, failure, human): { action-fluent, bool, default = false };
+        give_response(robot, response, failure, book, human): { action-fluent, bool, default = false };
+        give_book(robot, book, human): { action-fluent, bool, default = false };
     };
 
     cpfs {
-        // propagation of state fluents
+        robot_at'(?r, ?w) = if (exists_{?w1: waypoint} (goto_waypoint(?r, ?w1, ?w))) then true
+                            else if (exists_{?w1: waypoint} (goto_waypoint(?r, ?w, ?w1))) then false
+                            else robot_at(?r, ?w);
 
-        robot_at'(?r, ?w) = if (exists_{?w1: waypoint} (goto_waypoint(?r, ?w1, ?w))) then true 
-                    else if (exists_{?w1: waypoint} (goto_waypoint(?r, ?w, ?w1))) then false
-                    else robot_at(?r, ?w);
+        book_fetched'(?b, ?r, ?h) = if ( fetch_book(?r, ?b, ?h) ^ forall_{?f: failure} [ ~Bernoulli(prob_failure(?b, ?f)) ]  ) then true
+                                    else book_fetched(?b, ?r, ?h);
 
-        book_fetched'(?b, ?r, ?h) = if ( fetch_book(?r, ?b, ?h) ) then true 
-                    else book_fetched(?b, ?r, ?h);
+        failure_occurred'(?b, ?r, ?h, ?f) = if ( fetch_book(?r, ?b, ?h) ^ Bernoulli(prob_failure(?b, ?f)) ) then true
+                                            else failure_occurred(?b, ?r, ?h, ?f);
 
-        failure_happened' = if (exists_{?r: robot, ?b: book, ?f: failure} [ failure_happens(?r, ?b, ?f) ] ) then true 
-                    else failure_happened;
+        response_triggered'(?resp, ?f) = if ( exists_{?b: book, ?r: robot, ?h: human} [ failure_occurred(?b, ?r, ?h, ?f) ^ Bernoulli(prob_response(?resp, ?f)) ] ) then true 
+                                     else response_triggered(?resp, ?f);
 
-        failure_triggered'(?f) = if ( Bernoulli(prob_failure(?f)) ) then true
-                                else failure_triggered(?f);
-        
-        response_triggered'(?resp) = if (exists_{?f: failure} ( failure_triggered(?f) ^ Bernoulli(prob_response(?resp, ?f)) ) ) then true
-                                else response_triggered(?resp);
+        response_given'(?resp, ?f) = if (exists_{?r: robot, ?b: book, ?h: human} [ give_response(?r, ?resp, ?f, ?b, ?h) ] ) then true
+                                 else response_given(?resp, ?f);
 
-        response_given' = if (exists_{?r: robot, ?resp: response, ?f: failure, ?h: human} ( give_response(?r, ?resp, ?f, ?h) ) ) then true
-                                else response_given;
+        task_completed' = if ( exists_{?w: waypoint, ?r: robot, ?h: human, ?b: book, ?resp: response, ?f: failure} [ robot_at(?r, ?w) ^ human_at(?h, ?w) ^ ( response_given(?resp, ?f) | book_given(?b, ?r, ?h) ) ] ) then true
+                          else task_completed;
 
-        task_completed' = if ( response_given | ( forall_{?resp: response} [~response_triggered(?resp)] ^ exists_{?r: robot, ?w: waypoint, ?h: human, ?b: book} [ robot_at(?r, ?w) ^ human_at(?h, ?w) ^ book_fetched(?b, ?r, ?h) ^ failure_happened ] ) ) then true
-                                else task_completed;
+        book_given'(?b, ?r, ?h) = if ( give_book(?r, ?b, ?h) ) then true
+                                  else book_given(?b, ?r, ?h);
+
+        task_failed' = if ( exists_{?r:robot, ?b:book, ?h:human, ?f:failure} [ fetch_book(?r, ?b, ?h) ^ Bernoulli(prob_failure(?b, ?f)) ] ) then true
+                                            else task_failed;
     };
 
     action-preconditions {
-        // action preconditions
-
         // A robot must be in a position to move to another
         forall_{?r: robot, ?wf: waypoint, ?wt: waypoint} [goto_waypoint(?r, ?wf, ?wt) => ( robot_at(?r, ?wf) ^ ~task_completed ) ];
 
@@ -71,16 +71,16 @@ domain explanation_planning {
         // A robot can not be in two places at the same time
         forall_{?r: robot, ?w1: waypoint, ?w2: waypoint} [ ?w1 == ?w2 | (robot_at(?r, ?w1) => ~robot_at(?r, ?w2)) ];    
 
-        // fetch_book
-        forall_{?r: robot, ?b: book, ?h: human} [fetch_book(?r, ?b, ?h) => ( exists_{?w: waypoint} [ book_at(?b, ?w) ^ robot_at(?r, ?w) ] ) ];
+        // Fetch a book
+        forall_{?r: robot, ?b: book, ?h: human} [fetch_book(?r, ?b, ?h) => ( exists_{?w: waypoint} [ book_at(?b, ?w) ^ robot_at(?r, ?w) ] ^ wants_book(?h, ?b) ^ forall_{?f: failure} [ ~failure_occurred(?b, ?r, ?h, ?f) ] ) ];
 
-        // failure_happens
-        forall_{?r: robot, ?b: book, ?f: failure} [failure_happens(?r, ?b, ?f) => ( exists_{?w: waypoint, ?h: human} [ book_fetched(?b, ?r, ?h) ^ book_at(?b, ?w) ^ robot_at(?r, ?w) ^ failure_triggered(?f) ^ ~failure_happened ]) ];
+        // Give a response
+        forall_{?r: robot, ?resp: response, ?f: failure, ?b: book, ?h: human} [ give_response(?r, ?resp, ?f, ?b, ?h) => ( exists_{?w: waypoint} [ robot_at(?r, ?w) ^ human_at(?h, ?w) ] ^ failure_occurred(?b, ?r, ?h, ?f) ^ response_triggered(?resp, ?f) ) ];
 
-        // give_response
-        forall_{?r: robot, ?resp: response, ?f: failure, ?h: human} [give_response(?r, ?resp, ?f, ?h) => ( exists_{?w: waypoint, ?b: book} [ human_at(?h, ?w) ^ robot_at(?r, ?w) ^ book_fetched(?b, ?r, ?h) ] ^ failure_triggered(?f) ^ failure_happened ^ response_triggered(?resp) ^ ~response_given ) ];
+        // Give a book
+        forall_{?r: robot, ?b: book, ?h: human} [ give_book(?r, ?b, ?h) => ( exists_{?w: waypoint} [ robot_at(?r, ?w) ^ human_at(?h, ?w) ] ^ book_fetched(?b, ?r, ?h) ) ];
     };
 
-    reward = if ( task_completed ) then 100.0 
-            else -1.0;  // Reward for completing the task, penalty otherwise
+    reward = if (task_completed) then 100.0 else -10.0;
 }
+

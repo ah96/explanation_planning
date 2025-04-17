@@ -1,0 +1,131 @@
+<?xml version="1.0"?>
+<launch>
+
+	<!-- inclusion control arguments -->
+	<arg name="dispatcher" default="online" /> <!-- simple, esterel or online -->
+
+	<!-- arguments -->
+	<!-- Commonly modified and compulsory arguments -->
+	<arg name="domain_path"	default="$(find rosplan_demos)/common/domain.rddl" />
+	<arg name="problem_path" default="$(find rosplan_demos)/common/instance_failure_probability.rddl" />
+	<arg name="planning_language" default="RDDL" />
+	<arg name="generated_problem_path" default="$(find rosplan_demos)/common/gen_problem.rddl" />
+	<arg name="planner_interface" default="online_planner_interface" /> <!-- example: popf_planner_interface -->
+	<arg name="planner_command" />   <!--example: timeout 10 $(find rosplan_planning_system)/common/bin/popf DOMAIN PROBLEM -->
+
+	<!-- Not commonly modified arguments -->
+	<arg name="knowledge_base" default="rosplan_knowledge_base" />
+	<arg name="planner_topic" default="planner_output" />
+	<arg name="plan_topic" default="complete_plan" />
+	<arg name="action_dispatch_topic" default="action_dispatch" />
+	<arg name="action_feedback_topic" default="action_feedback" />
+	<arg name="data_path" default="$(find rosplan_demos)/common/" />
+	<arg name="use_unknowns" default="false" />
+	<arg name="use_problem_topic" default="true" />
+	<arg name="problem_topic" default="problem_instance" />
+	<arg name="ippc_server_port" default="3234" />
+    <arg name="compute_rewards" default="true" />
+
+	<!-- knowledge base -->
+	<node name="rosplan_knowledge_base" pkg="rosplan_knowledge_base" type="knowledgeBase" respawn="false" launch-prefix="gdb -ex run --args" output="screen">
+		<param name="domain_path" value="$(arg domain_path)" />
+		<param name="problem_path" value="$(arg problem_path)" />
+		<!-- conditional planning flags -->
+		<param name="use_unknowns" value="false" />
+	</node>
+
+	<!-- problem generation -->
+	<include file="$(find rosplan_planning_system)/launch/includes/problem_interface.launch">
+		<arg name="knowledge_base"   value="rosplan_knowledge_base" />
+		<arg name="domain_path"      value="$(arg domain_path)" />
+		<arg name="problem_path"     value="$(find rosplan_demos)/common/gen_problem.rddl" />
+		<arg name="problem_topic"    value="problem_instance" />
+		<arg name="planning_language"    value="RDDL" />
+	</include>
+	
+	
+	<!-- planner interface -->
+	<include file="$(find rosplan_planning_system)/launch/includes/planner_interface.launch">
+		<arg name="use_problem_topic"    value="true" />
+		<arg name="problem_topic"        value="/rosplan_problem_interface/problem_instance" />
+		<arg name="planner_topic"        value="planner_output" />
+		<arg name="domain_path"          value="$(arg domain_path)" />
+		<arg name="problem_path"         value="$(find rosplan_demos)/common/gen_problem.rddl" />
+		<arg name="data_path"            value="$(find rosplan_demos)/common/" />
+		<!--arg name="planner_command"      value="timeout 90 $(find rosplan_planning_system)/common/bin/prost/run_prost.sh DOMAIN PROBLEM &quot;[PROST -s 1 -se [THTS -act [UCB1] -out [UMC] -backup [PB] -init [Expand -h [IDS]] -t 1.0 ]]&quot;" /-->
+		<!--arg name="planner_command"         value="$(find rosplan_planning_system)/common/bin/prost/run_prost_online.sh DOMAIN PROBLEM &quot;[PROST -s 1 -se [IPPC2014]]&quot;" /-->
+		<arg name="planner_command"         value="$(find rosplan_planning_system)/common/bin/prost/run_prost_online.sh DOMAIN PROBLEM &quot;[PROST -s 1 -se [IPPC2014]]&quot;" />
+		<arg name="planner_interface"    	value="online_planner_interface" />
+	</include>
+
+	<group if="$(eval dispatcher == 'simple')" >
+		<!-- plan parsing -->
+		<node name="rosplan_parsing_interface" pkg="rosplan_planning_system" type="pddl_simple_plan_parser" respawn="false" output="screen">
+			<param name="knowledge_base" value="$(arg knowledge_base)" />
+			<param name="planner_topic"  value="/rosplan_planner_interface/$(arg planner_topic)" />
+			<param name="plan_topic"     value="$(arg plan_topic)" />
+		</node>
+
+		<!-- plan dispatching -->
+		<node name="rosplan_plan_dispatcher" pkg="rosplan_planning_system" type="pddl_simple_plan_dispatcher" respawn="false" output="screen">
+			<param name="knowledge_base"        value="$(arg knowledge_base)" />
+			<param name="plan_topic"            value="/rosplan_parsing_interface/$(arg plan_topic)" />
+			<param name="action_dispatch_topic" value="$(arg action_dispatch_topic)" />
+			<param name="action_feedback_topic" value="$(arg action_feedback_topic)" />
+		</node>
+	</group>
+
+	<group if="$(eval dispatcher == 'esterel')" >
+		<!-- plan parsing -->
+		<node name="rosplan_parsing_interface" pkg="rosplan_planning_system" type="pddl_esterel_plan_parser" respawn="false" output="screen">
+			<param name="knowledge_base" 	value="$(arg knowledge_base)" />
+			<param name="planner_topic"  	value="/rosplan_planner_interface/$(arg planner_topic)" />
+			<param name="plan_topic"     	value="$(arg plan_topic)" />
+		</node>
+
+		<!-- plan dispatching -->
+		<node name="rosplan_plan_dispatcher" pkg="rosplan_planning_system" type="pddl_esterel_plan_dispatcher" respawn="false" output="screen">
+			<param name="knowledge_base"        value="$(arg knowledge_base)" />
+			<param name="plan_topic"            value="/rosplan_parsing_interface/$(arg plan_topic)" />
+			<param name="action_dispatch_topic" value="$(arg action_dispatch_topic)" />
+			<param name="action_feedback_topic" value="$(arg action_feedback_topic)" />
+			<param name="display_edge_type" value="true" />
+		</node>
+	</group>
+
+	<group if="$(eval dispatcher == 'online')" >
+		<!-- plan dispatching -->
+		<node name="rosplan_plan_dispatcher" pkg="rosplan_planning_system" type="online_plan_dispatcher" respawn="false" output="screen">
+			<param name="knowledge_base"        value="$(arg knowledge_base)" />
+			<param name="plan_topic"            value="/rosplan_parsing_interface/$(arg plan_topic)" />
+			<param name="action_dispatch_topic" value="$(arg action_dispatch_topic)" />
+			<param name="action_feedback_topic" value="$(arg action_feedback_topic)" />
+			<param name="ippc_server_port" 		value="$(arg ippc_server_port)" />
+            <param name="compute_rewards" 		value="$(arg compute_rewards)" />
+		</node>
+	</group>
+	
+	<!-- ROSPlan -->
+	<!--include file="$(find rosplan_planning_system)/launch/interfaced_planning_system.launch" -->
+		<!--arg name="domain_path"		value="$(find rosplan_demos)/common/ijcai2024_domain.rddl" /-->
+		<!--arg name="problem_path"	value="$(find rosplan_demos)/common/ijcai2024_instance.rddl" /-->
+	<!--/include-->
+	
+	<!-- sim actions --> 
+	<include file="$(find rosplan_planning_system)/launch/includes/simulated_action.launch" >
+		<arg name="pddl_action_name" value="goto_waypoint" />
+		<arg name="action_duration" value="2.0" />
+	</include>
+	<include file="$(find rosplan_planning_system)/launch/includes/simulated_action.launch" >
+		<arg name="pddl_action_name" value="fetch_book" />
+		<arg name="action_duration" value="2.0" />
+	</include>
+	<include file="$(find rosplan_planning_system)/launch/includes/simulated_action.launch" >
+		<arg name="pddl_action_name" value="give_response" />
+		<arg name="action_duration" value="2.0" />
+	</include>
+	<include file="$(find rosplan_planning_system)/launch/includes/simulated_action.launch" >
+		<arg name="pddl_action_name" value="give_book" />
+		<arg name="action_duration" value="2.0" />
+	</include>
+</launch>

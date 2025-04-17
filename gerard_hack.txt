@@ -1,0 +1,49 @@
+rosservice call /rosplan_knowledge_base/update "update_type: 2
+knowledge:
+  knowledge_type: 1
+  initial_time: {secs: 0, nsecs: 0}
+  is_negative: false
+  instance_type: ''
+  instance_name: ''
+  attribute_name: 'robot_at'
+  values:
+  - {key: '', value: 'tiago'}
+  - {key: '', value: 'w2'}
+  function_value: 0.0
+  assign_op: 0
+  optimization: ''
+  expr:
+    tokens:
+    - expr_type: 0
+      constant: 0.0
+      function:
+        name: ''
+        typed_parameters:
+        - {key: '', value: ''}
+      op: 0
+      special_type: 0
+  ineq:
+    comparison_type: 0
+    LHS:
+      tokens:
+      - expr_type: 0
+        constant: 0.0
+        function:
+          name: ''
+          typed_parameters:
+          - {key: '', value: ''}
+        op: 0
+        special_type: 0
+    RHS:
+      tokens:
+      - expr_type: 0
+        constant: 0.0
+        function:
+          name: ''
+          typed_parameters:
+          - {key: '', value: ''}
+        op: 0
+        special_type: 0
+    grounded: true" 
+
+

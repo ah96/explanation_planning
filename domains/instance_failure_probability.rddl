@@ -1,0 +1,30 @@
+non-fluents nf_instance_failure_probability {
+    domain = explanation_planning;
+    objects {
+        robot: { tiago };
+        human: { h1 };
+        book: { b1, b2 };
+        waypoint: { w1, w2 };
+        failure: { agent_error };
+        response: { why_explanation };
+    };
+    non-fluents {
+        human_at(h1, w1);
+        wants_book(h1, b1);
+        book_at(b1, w2);
+
+        prob_failure(b1, agent_error) = 1.0;
+        prob_response(why_explanation, agent_error) = 1.0;
+    };
+}
+
+instance instance_failure_probability {
+    domain = explanation_planning;
+    non-fluents = nf_instance_failure_probability;
+    init-state { 
+        robot_at(tiago, w2); 
+    };
+    max-nondef-actions = 1;
+    horizon = 15;
+    discount = 1.0;
+}
